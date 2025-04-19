@@ -1,18 +1,34 @@
 const express = require('express');
 const app = express();
 
-app.get("/", (req, res) => {
-    res.send("Namaste Node");
+const { adminAuth, userAuth } = require('./middlewares/auth');
+
+app.use("/admin", (req, res, next)=> {
+    adminAuth(req, res, next);
+})
+
+app.get("/user", userAuth,(req, res) => {
+    res.send("Fecthing users");
 });
 
-app.get("/test", (req, res) => {
-    res.send("Hello World from test Api");
+app.get("/admin/getAllUsers", (req, res) => {
+    res.send("Fecthing all users");
 });
 
-app.get("/hello", (req, res) => {
-    res.send("Hello World from Hello Api");
+app.get("/admin/deleteUser", (req, res) => {
+    res.send("Deleting user");
 });
 
-app.listen(3000, () => {
-    console.log('Server is running on port 3000');
+app.get("/checkError", (req, res) => {
+    throw new Error("Error");
+});
+
+app.use("/", (err, req, res, next) => {
+   if(err) {
+    res.status(500).send("Internal Server Error");
+   }
+});
+
+app.listen(7778, () => {
+
 });
