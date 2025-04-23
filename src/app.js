@@ -1,23 +1,54 @@
 const express = require('express');
 const connectDB = require('./config/database');
 const User = require('./models/user');
+const bcrypt = require('bcrypt');
+const  {isAllowedToUpdate, validateSkills,validateSignup} = require('./utils/validate');
 const app = express();
 
 app.use(express.json());
 app.post('/signup', async (req, res) => {
     //const {firstName, lastName, emailId, password, age, gender} = req.body;
-    const user = new User(
-       req.body
-    );
 
     try {
+        validateSignup(req);
+
+        const {firstName,lastName, emailId,  password} = req.body;
+
+        const passwordHash = await bcrypt.hash(password, 10);
+
+        const user = new User({
+            firstName,
+            lastName,
+            emailId,
+            password: passwordHash,
+    });
         await user.save();
         res.send('User created successfully');
     } catch (err) {
-        res.status(500).send('Error creating user');
+       // console.log(err);
+        res.status(500).send('Error creating user'+err.message);
     }
 })
 
+app.post('/login', async (req, res) => {
+    try {
+        const {emailId, password} = req.body;
+        const user = await User.findOne({emailId: emailId});
+        if(!user) {
+            res.status(400).send('Invalid Credentials');
+        } else {
+            const isPasswordValid = await bcrypt.compare(password, user.password);
+            if(isPasswordValid) {
+                res.send('Login successful');
+            }
+            else {
+                res.status(401).send('Invalid Credentials');
+            }
+        }
+    } catch (err) {
+        res.status(500).send('Something went wrong'+err.message);
+    }
+})
 app.get('/feed', async (req, res) => {
     try {
         const users = await User.find({});
@@ -28,7 +59,7 @@ app.get('/feed', async (req, res) => {
         }
         
     } catch (err) {
-        res.status(500).send('Something went wrong');
+        res.status(500).send('Something went wrong'+err.message);
     }
 })
 
@@ -43,7 +74,7 @@ app.get('/user', async (req, res) => {
         }
         
     } catch (err) {
-        res.status(500).send('Something went wrong');
+        res.status(500).send('Something went wrong'+err.message);
     }
 })
 
@@ -53,7 +84,7 @@ app.get('/userByEmail', async (req, res) => {
         const user = await User.findOne({emailId: emailId});
         res.send(user);
     } catch (err) {
-        res.status(500).send('Something went wrong');
+        res.status(500).send('Something went wrong'+err.message);
     }
 })
 
@@ -67,14 +98,23 @@ app.delete('/user', async (req, res) => {
     }
 })
 
-app.patch('/user', async (req, res) => {
+app.patch('/user/:userId', async (req, res) => {
     try {
-        const userId = req.body.userId;
-        const user = await User.findByIdAndUpdate({_id: userId}, req.body, {returnDocument: 'after'});;
+        if(!isAllowedToUpdate(req.body)) {
+            throw new Error('Invalid fields to update');
+        }
+        if(!validateSkills(req?.body?.skills)) {
+            throw new Error('Skills should be less than 10');  
+        }
+        const userId = req.params.userId;
+        const user = await User.findByIdAndUpdate({_id: userId}, req.body, {returnDocument: 'after',
+            runValidators: true,
+            context: 'query' 
+        });;
         //console.log(`User after update: ${user}`);
         res.send("Updated the user successfully");
     } catch (err) {
-        res.status(500).send('Something went wrong');
+        res.status(500).send('Something went wrong'+err.message);
     }
 })
 
@@ -84,7 +124,7 @@ app.patch('/userByEmail', async (req, res) => {
         const user = await User.findOneAndUpdate({emailId: emailId}, req.body);;
         res.send("Updated the user successfully");
     } catch (err) {
-        res.status(500).send('Something went wrong');
+        res.status(500).send('Something went wrong'+ err.message);
     }
 })
 
