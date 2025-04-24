@@ -1,11 +1,17 @@
 const express = require('express');
 const connectDB = require('./config/database');
 const User = require('./models/user');
+const { userAuth } = require('./middlewares/auth');
 const bcrypt = require('bcrypt');
 const  {isAllowedToUpdate, validateSkills,validateSignup} = require('./utils/validate');
+
+const jwt = require('jsonwebtoken');
+const cookieParser = require('cookie-parser');
 const app = express();
 
+
 app.use(express.json());
+app.use(cookieParser());
 app.post('/signup', async (req, res) => {
     //const {firstName, lastName, emailId, password, age, gender} = req.body;
 
@@ -37,8 +43,10 @@ app.post('/login', async (req, res) => {
         if(!user) {
             res.status(400).send('Invalid Credentials');
         } else {
-            const isPasswordValid = await bcrypt.compare(password, user.password);
+            const isPasswordValid = user.checkValidPassword(password);
             if(isPasswordValid) {
+                const token = await user.getJWT();
+                res.cookie('token', token, {expire: new Date(Date.now() * 7 + 3600000)});
                 res.send('Login successful');
             }
             else {
@@ -49,85 +57,28 @@ app.post('/login', async (req, res) => {
         res.status(500).send('Something went wrong'+err.message);
     }
 })
-app.get('/feed', async (req, res) => {
-    try {
-        const users = await User.find({});
-        if(users.length  === 0)  {
-            res.status(404).send('No users found');
-        }else {
-            res.send(users);
-        }
-        
-    } catch (err) {
-        res.status(500).send('Something went wrong'+err.message);
-    }
-})
 
-app.get('/user', async (req, res) => {
+app.get('/profile',userAuth, async (req, res) => {
     try {
-        const userId = req.body.userId;
-        const user = await User.findById({_id: userId});
-        if(!user) {
-            res.status(404).send('User not found');
-        } else {
-            res.send(user);
-        }
-        
-    } catch (err) {
-        res.status(500).send('Something went wrong'+err.message);
-    }
-})
-
-app.get('/userByEmail', async (req, res) => {
-    try {
-        const emailId = req.body.emailId;
-        const user = await User.findOne({emailId: emailId});
+        const user = req.user;
         res.send(user);
+        
     } catch (err) {
-        res.status(500).send('Something went wrong'+err.message);
+        res.status(500).send('Not loading the profile'+err.message);
     }
+        
 })
 
-app.delete('/user', async (req, res) => {
+app.post('/sendConnectionRequest', userAuth, async (req, res) => {
     try {
-        const userId = req.body.userId;
-        const user = await User.findByIdAndDelete({_id: userId});
-        res.send("Deleted the user successfully");
+       const user = req.user;
+       res.send(user.firstName + ' ' + user.lastName + ' sent you a connection request');
+       
+        
     } catch (err) {
-        res.status(500).send('Something went wrong');
+        res.status(500).send('Connection Request Failed: '+err.message);
     }
 })
-
-app.patch('/user/:userId', async (req, res) => {
-    try {
-        if(!isAllowedToUpdate(req.body)) {
-            throw new Error('Invalid fields to update');
-        }
-        if(!validateSkills(req?.body?.skills)) {
-            throw new Error('Skills should be less than 10');  
-        }
-        const userId = req.params.userId;
-        const user = await User.findByIdAndUpdate({_id: userId}, req.body, {returnDocument: 'after',
-            runValidators: true,
-            context: 'query' 
-        });;
-        //console.log(`User after update: ${user}`);
-        res.send("Updated the user successfully");
-    } catch (err) {
-        res.status(500).send('Something went wrong'+err.message);
-    }
-})
-
-app.patch('/userByEmail', async (req, res) => {
-    try {
-        const emailId = req.body.emailId;
-        const user = await User.findOneAndUpdate({emailId: emailId}, req.body);;
-        res.send("Updated the user successfully");
-    } catch (err) {
-        res.status(500).send('Something went wrong'+ err.message);
-    }
-})
-
 
 app.use("/",(err, req, res) => {
     if(err){
