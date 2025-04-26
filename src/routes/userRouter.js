@@ -41,12 +41,48 @@ try {
         }
     })
     res.status(200).json({
-        message: 'Connections',
         data: data
     });
 }catch (err) {
     res.status(500).send('Error fetching connections: ' + err.message);
 }
+})
+
+userRouter.get('/user/feed', userAuth, async (req, res) => {
+    try {
+
+        const loggeInUser = req.user;
+        const page = parseInt(req.query.page) || 1;
+        let limit = parseInt(req.query.limit) || 10;
+        limit = limit > 50 ? 50 : limit;
+        const skip = (page - 1) * limit;
+        const connections = await ConnectionRequest.find({
+            $or:[
+                { fromUserId: loggeInUser._id },
+                { toUserId: loggeInUser._id }
+            ]
+        }).select('fromUserId toUserId');
+
+        const hiddenUserIds = new Set();
+        connections.forEach((connection)=> {
+            hiddenUserIds.add(connection.fromUserId.toString());
+            hiddenUserIds.add(connection.toUserId.toString());
+        })
+       
+        const users = await User.find({
+            $and: [
+                { _id: { $ne: loggeInUser._id } },
+                { _id: { $nin: Array.from(hiddenUserIds) } }
+            ]
+        }).select(USER_SAVE_DATA).skip(skip).limit(limit);
+            
+       res.status(200).json({
+            message: 'User Feed',
+            data: users
+        });
+    }catch (err) {
+        res.status(500).send('Error fetching feed: ' + err.message);
+    }
 })
 
 module.exports = userRouter;
