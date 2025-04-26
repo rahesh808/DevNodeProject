@@ -11,9 +11,10 @@ app.use(cookieParser());
 const authRouter = require('./routes/authRouter');
 const profileRouter = require('./routes/profileRouter');
 const requestRouter = require('./routes/requestRouter');
+const userRouter = require('./routes/userRouter');
 
 
-app.use('/', authRouter, profileRouter, requestRouter);
+app.use('/', authRouter, profileRouter, requestRouter, userRouter);
 
 
 
