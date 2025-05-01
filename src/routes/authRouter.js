@@ -23,8 +23,10 @@ authRouter.post('/signup', async (req, res) => {
             emailId,
             password: passwordHash,
     });
-        await user.save();
-        res.send('User created successfully');
+        const savedUser = await  user.save();
+        const token = await savedUser.getJWT();
+        res.cookie('token', token, {expire: new Date(Date.now() * 8 + 3600000)});
+        res.send({message: 'User created successfully', data: savedUser});
     } catch (err) {
        // console.log(err);
         res.status(500).send('Error creating user'+err.message);
@@ -42,10 +44,10 @@ authRouter.post('/login', async (req, res) => {
             if(isPasswordValid) {
                 const token = await user.getJWT();
                 res.cookie('token', token, {expire: new Date(Date.now() * 7 + 3600000)});
-                res.send('Login successful');
+                res.send(user);
             }
             else {
-                res.status(401).send('Invalid Credentials');
+                res.status(401).json('Invalid Credentials');
             }
         }
     } catch (err) {
@@ -53,11 +55,11 @@ authRouter.post('/login', async (req, res) => {
     }
 })
 
-authRouter.post('/logout',userAuth, async (req, res) => {
+authRouter.post('/logout', async (req, res) => {
     try {
-        const user = req.user;
+        
         res.cookie('token', null, {expire: new Date(Date.now())});
-        res.send('Logout successfull by the'+user.firstName + ' '+user.lastName);
+        res.send('Logout successfull');
     } catch (err) {
         res.status(500).send('Something went wrong'+err.message);
     }
