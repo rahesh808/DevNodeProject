@@ -1,4 +1,5 @@
 const express = require('express');
+require('dotenv-flow').config();
 const connectDB = require('./config/database');
 
 const app = express();

@@ -5,6 +5,7 @@ const { userAuth } = require('../middlewares/auth');
 const ConnectionRequest = require('../models/connectionRequest');
 const  User = require('../models/user');
 
+const sendEmail = require('../utils/sendEmail');
 requestRouter.post('/request/send/:status/:userId', userAuth, async (req, res) => {
     try {
         const fromUserId = req.user._id;
@@ -33,6 +34,9 @@ requestRouter.post('/request/send/:status/:userId', userAuth, async (req, res) =
             status
         });
         const data = await connectionRequest.save();
+
+        const emailResponse = await sendEmail.run();
+        console.log(emailResponse);
         res.status(200).json({
             message: `${req.user.firstName} ${req.user.lastName} is ${status} in ${toUser.firstName} ${toUser.lastName}`,
             data
