@@ -35,7 +35,7 @@ requestRouter.post('/request/send/:status/:userId', userAuth, async (req, res) =
         });
         const data = await connectionRequest.save();
 
-        const emailResponse = await sendEmail.run();
+        const emailResponse = await sendEmail.run("Friend Request", `Hi ${toUser.firstName}, ${req.user.firstName} ${req.user.lastName} has sent you a friend request`);
         console.log(emailResponse);
         res.status(200).json({
             message: `${req.user.firstName} ${req.user.lastName} is ${status} in ${toUser.firstName} ${toUser.lastName}`,

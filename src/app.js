@@ -1,5 +1,6 @@
 const express = require('express');
 require('dotenv-flow').config();
+require('./utils/cronjob');
 const connectDB = require('./config/database');
 
 const app = express();
